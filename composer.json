@@ -4,6 +4,7 @@
     "keywords": [
         "Sofi",
         "PHP",
+        "PSR-7",
         "framework"
     ],
     "type": "library",
