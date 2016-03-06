@@ -25,7 +25,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Sofi\\HTTP\\Message\\": ""
+            "Sofi\\HTTP\\Message\\": "src"
         }
     },
     "extra": {
