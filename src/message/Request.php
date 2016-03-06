@@ -2,7 +2,7 @@
 
 namespace Sofi\HTTP\Message;
 
-class Request extends Message implements ServerRequestInterface
+class Request extends Message implements \Psr\Http\Message\ServerRequestInterface
 {
     /**
      * The request method
@@ -93,14 +93,14 @@ class Request extends Message implements ServerRequestInterface
      * @param StreamInterface  $body          The request body object
      * @param array            $uploadedFiles The request uploadedFiles collection
      */
-    public function __construct($method, UriInterface $uri, HeadersInterface $headers, array $cookies, array $serverParams, StreamInterface $body, array $uploadedFiles = [])
+    public function __construct($method, \Psr\Http\Message\UriInterface $uri,  interfaces\HeadersInterface $headers, array $cookies, array $serverParams, \Psr\Http\Message\StreamInterface $body, array $uploadedFiles = [])
     {
         $this->method = $this->filterMethod($method);
         $this->uri = $uri;
         $this->headers = $headers;
         $this->cookies = $cookies;
         $this->serverParams = $serverParams;
-        $this->attributes = new Collection();
+        $this->attributes = new \Sofi\Base\Collection();
         $this->body = $body;
         $this->uploadedFiles = $uploadedFiles;
         if (isset($serverParams['SERVER_PROTOCOL'])) {
@@ -131,7 +131,7 @@ class Request extends Message implements ServerRequestInterface
     }
     public static function createFromGlobals(array $globals)
     {
-        $env = new Collection($globals);
+        $env = new \Sofi\Base\Collection($globals);
         $method = $env->get('REQUEST_METHOD');
         $uri = Uri::createFromGlobals($globals);
         $headers = Headers::createFromGlobals($globals);
@@ -327,7 +327,7 @@ class Request extends Message implements ServerRequestInterface
      * @param bool $preserveHost Preserve the original state of the Host header.
      * @return self
      */
-    public function withUri(UriInterface $uri, $preserveHost = false)
+    public function withUri(\Psr\Http\Message\UriInterface $uri, $preserveHost = false)
     {
         $clone = clone $this;
         $clone->uri = $uri;

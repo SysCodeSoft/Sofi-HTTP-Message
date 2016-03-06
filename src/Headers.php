@@ -1,6 +1,6 @@
 <?php
 
-namespace Sofi\HTTP\Message;
+namespace Sofi\HTTP;
 
 /**
  * Headers
@@ -15,7 +15,7 @@ namespace Sofi\HTTP\Message;
  * you request a header value, you receive an array of values
  * for that header.
  */
-class Headers extends Collection
+class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterface
 {
     /**
      * Special HTTP headers that do not have the "HTTP_" prefix
@@ -40,7 +40,7 @@ class Headers extends Collection
      */
     public static function createFromGlobals(array $globals)
     {
-        $env = new Collection($globals);
+        $env = new \Sofi\Base\Collection($globals);
         $data = [];
         foreach ($env as $key => $value) {
             $key = strtoupper($key);
