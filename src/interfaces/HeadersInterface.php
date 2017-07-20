@@ -1,6 +1,6 @@
 <?php
 
-namespace Sofi\HTTP\Message\interfaces;
+namespace Sofi\HTTP\interfaces;
 
 /**
  * Headers Interface

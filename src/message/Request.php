@@ -1,69 +1,80 @@
 <?php
 
-namespace Sofi\HTTP\Message;
+namespace Sofi\HTTP\message;
 
 class Request extends Message implements \Psr\Http\Message\ServerRequestInterface
 {
+
     /**
      * The request method
      *
      * @var string
      */
     protected $method;
+
     /**
      * The request URI object
      *
      * @var \Psr\Http\Message\UriInterface
      */
     protected $uri;
+
     /**
      * The request URI target (path + query string)
      *
      * @var string
      */
     protected $requestTarget;
+
     /**
      * The request query string params
      *
      * @var array
      */
     protected $queryParams;
+
     /**
      * The request cookies
      *
      * @var array
      */
     protected $cookies;
+
     /**
      * The server environment variables at the time the request was created.
      *
      * @var array
      */
     protected $serverParams;
+
     /**
      * The request attributes (route segment names and values)
      *
      * @var Collection
      */
     protected $attributes;
+
     /**
      * The request body parsed (if possible) into a PHP array or object
      *
      * @var null|array|object
      */
     protected $bodyParsed;
+
     /**
      * List of request body parsers (e.g., url-encoded, JSON, XML, multipart)
      *
      * @var callable[]
      */
     protected $bodyParsers = [];
+
     /**
      * List of uploaded files
      *
      * @var UploadedFileInterface[]
      */
     protected $uploadedFiles;
+
     /**
      * Valid request methods
      *
@@ -80,6 +91,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         'PUT' => 1,
         'TRACE' => 1,
     ];
+
     /**
      * Create new HTTP request.
      *
@@ -93,14 +105,14 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
      * @param StreamInterface  $body          The request body object
      * @param array            $uploadedFiles The request uploadedFiles collection
      */
-    public function __construct($method, \Psr\Http\Message\UriInterface $uri,  interfaces\HeadersInterface $headers, array $cookies, array $serverParams, \Psr\Http\Message\StreamInterface $body, array $uploadedFiles = [])
+    public function __construct($method, \Psr\Http\Message\UriInterface $uri, \Sofi\HTTP\interfaces\HeadersInterface $headers, array $cookies, array $serverParams, \Psr\Http\Message\StreamInterface $body, array $uploadedFiles = [])
     {
         $this->method = $this->filterMethod($method);
         $this->uri = $uri;
         $this->headers = $headers;
         $this->cookies = $cookies;
         $this->serverParams = $serverParams;
-        $this->attributes = new \Sofi\Base\Collection();
+        $this->attributes = new \Sofi\Base\Collection($this->getQueryParams());
         $this->body = $body;
         $this->uploadedFiles = $uploadedFiles;
         if (isset($serverParams['SERVER_PROTOCOL'])) {
@@ -129,25 +141,85 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
             return $data;
         });
     }
-    public static function createFromGlobals(array $globals)
+    
+    public static function createFromGlobals(array $globals = [])
     {
+        if ($globals == []) {
+            $globals = $_SERVER;
+        }
+        
         $env = new \Sofi\Base\Collection($globals);
         $method = $env->get('REQUEST_METHOD');
-        $uri = Uri::createFromGlobals($globals);
-        $headers = Headers::createFromGlobals($globals);
-        $cookies = Cookies::parseHeader($headers->get('Cookie', []));
+        $uri = \Sofi\HTTP\message\Uri::createFromGlobals($globals);
+        $headers = \Sofi\HTTP\Headers::createFromGlobals($globals);
+        $cookies = \Sofi\HTTP\Cookies::parseHeader($headers->get('Cookie', []));
         $serverParams = $globals;
-        $body = new RequestBody();
-        $uploadedFiles = UploadedFile::createFromGlobals($globals);
+        $body = new \Sofi\HTTP\RequestBody();
+        $uploadedFiles = \Sofi\HTTP\UploadedFile::createFromGlobals($globals);
         $request = new static($method, $uri, $headers, $cookies, $serverParams, $body, $uploadedFiles);
         if ($method === 'POST' &&
-            in_array($request->getMediaType(), ['application/x-www-form-urlencoded', 'multipart/form-data'])
+                in_array($request->getMediaType(), ['application/x-www-form-urlencoded', 'multipart/form-data'])
         ) {
             // parsed body must be $_POST
             $request = $request->withParsedBody($_POST);
         }
         return $request;
     }
+
+    public static function createFromApache(array $globals, $uri = '')
+    {
+        $env = new \Sofi\Base\Collection($globals);
+        $method = $env->get('REQUEST_METHOD');
+        $uri = new \Sofi\HTTP\message\Uri($_SERVER['HTTP_HOST'].'/'.$_GET['request_string']);
+        $headers = \Sofi\HTTP\Headers::createFromGlobals($globals);
+        $cookies = \Sofi\HTTP\Cookies::parseHeader($headers->get('Cookie', []));
+        $serverParams = $globals;
+        $body = new \Sofi\HTTP\RequestBody();
+        $uploadedFiles = \Sofi\HTTP\UploadedFile::createFromGlobals($globals);
+        $request = new static($method, $uri, $headers, $cookies, $serverParams, $body, $uploadedFiles);
+        if ($method === 'POST' &&
+                in_array($request->getMediaType(), ['application/x-www-form-urlencoded', 'multipart/form-data'])
+        ) {
+            // parsed body must be $_POST
+            $request = $request->withParsedBody($_POST);
+        }
+        return $request;
+    }
+
+    /**
+     * Create new headers collection with data extracted from string
+     *
+     * @param string $Line
+     *
+     * @return self
+     */
+    public static function createFromString($Line)
+    {
+        // explode the string into lines.
+        $lines = explode("\n", $Line);
+
+        // extract the method and uri
+        list( $method, $uri ) = explode(' ', array_shift($lines));
+
+        $headers = [];
+
+        foreach ($lines as $line) {
+            // clean the line
+            $line = trim($line);
+
+            if (strpos($line, ': ') !== false) {
+                list( $key, $value ) = explode(': ', $line);
+                $headers[$key] = $value;
+            }
+        }
+        
+        $reqBody = new \Sofi\HTTP\RequestBody();
+        $headers = \Sofi\HTTP\Headers::createFromArray($headers);
+        $cookies = \Sofi\HTTP\Cookies::parseHeader($headers->get('cookie'));
+        
+        return new static($method, new \Sofi\HTTP\message\Uri($uri), $headers, $cookies, $_SERVER, $reqBody);
+    }
+
     /**
      * This method is applied to the cloned object
      * after PHP performs an initial shallow-copy. This
@@ -160,9 +232,11 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $this->attributes = clone $this->attributes;
         $this->body = clone $this->body;
     }
-    /*******************************************************************************
+
+    /*     * *****************************************************************************
      * Method
-     ******************************************************************************/
+     * **************************************************************************** */
+
     /**
      * Retrieves the HTTP method of the request.
      *
@@ -172,6 +246,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
     {
         return $this->method;
     }
+
     /**
      * Return an instance with the provided HTTP method.
      *
@@ -193,6 +268,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $clone->method = $this->filterMethod($method);
         return $clone;
     }
+
     /**
      * Validate the HTTP method
      *
@@ -207,22 +283,22 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         }
         if (!is_string($method)) {
             throw new InvalidArgumentException(sprintf(
-                'Unsupported HTTP method; must be a string, received %s',
-                (is_object($method) ? get_class($method) : gettype($method))
+                    'Unsupported HTTP method; must be a string, received %s', (is_object($method) ? get_class($method) : gettype($method))
             ));
         }
         $method = strtoupper($method);
         if (!isset($this->validMethods[$method])) {
             throw new InvalidArgumentException(sprintf(
-                'Unsupported HTTP method "%s" provided',
-                $method
+                    'Unsupported HTTP method "%s" provided', $method
             ));
         }
         return $method;
     }
-    /*******************************************************************************
+
+    /*     * *****************************************************************************
      * URI
-     ******************************************************************************/
+     * **************************************************************************** */
+
     /**
      * Retrieves the message's request target.
      *
@@ -255,6 +331,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $this->requestTarget = $path;
         return $this->requestTarget;
     }
+
     /**
      * Return an instance with the specific request-target.
      *
@@ -277,13 +354,14 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
     {
         if (preg_match('#\s#', $requestTarget)) {
             throw new InvalidArgumentException(
-                'Invalid request target provided; must be a string and cannot contain whitespace'
+            'Invalid request target provided; must be a string and cannot contain whitespace'
             );
         }
         $clone = clone $this;
         $clone->requestTarget = $requestTarget;
         return $clone;
     }
+
     /**
      * Retrieves the URI instance.
      *
@@ -297,6 +375,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
     {
         return $this->uri;
     }
+
     /**
      * Returns an instance with the provided URI.
      *
@@ -342,9 +421,11 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         }
         return $clone;
     }
-    /*******************************************************************************
+
+    /*     * *****************************************************************************
      * Cookies
-     ******************************************************************************/
+     * **************************************************************************** */
+
     /**
      * Retrieve cookies.
      *
@@ -359,6 +440,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
     {
         return $this->cookies;
     }
+
     /**
      * Return an instance with the specified cookies.
      *
@@ -382,9 +464,11 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $clone->cookies = $cookies;
         return $clone;
     }
-    /*******************************************************************************
+
+    /*     * *****************************************************************************
      * Query Params
-     ******************************************************************************/
+     * **************************************************************************** */
+
     /**
      * Retrieve query string arguments.
      *
@@ -408,6 +492,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         parse_str($this->uri->getQuery(), $this->queryParams); // <-- URL decodes data
         return $this->queryParams;
     }
+
     /**
      * Return an instance with the specified query string arguments.
      *
@@ -436,9 +521,11 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $clone->queryParams = $query;
         return $clone;
     }
-    /*******************************************************************************
+
+    /*     * *****************************************************************************
      * File Params
-     ******************************************************************************/
+     * **************************************************************************** */
+
     /**
      * Retrieve normalized file upload data.
      *
@@ -455,6 +542,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
     {
         return $this->uploadedFiles;
     }
+
     /**
      * Create a new instance with the specified uploaded files.
      *
@@ -472,9 +560,11 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $clone->uploadedFiles = $uploadedFiles;
         return $clone;
     }
-    /*******************************************************************************
+
+    /*     * *****************************************************************************
      * Server Params
-     ******************************************************************************/
+     * **************************************************************************** */
+
     /**
      * Retrieve server parameters.
      *
@@ -488,9 +578,11 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
     {
         return $this->serverParams;
     }
-    /*******************************************************************************
+
+    /*     * *****************************************************************************
      * Attributes
-     ******************************************************************************/
+     * **************************************************************************** */
+
     /**
      * Retrieve attributes derived from the request.
      *
@@ -506,6 +598,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
     {
         return $this->attributes->all();
     }
+
     /**
      * Retrieve a single derived request attribute.
      *
@@ -525,6 +618,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
     {
         return $this->attributes->get($name, $default);
     }
+
     /**
      * Return an instance with the specified derived request attribute.
      *
@@ -546,6 +640,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $clone->attributes->set($name, $value);
         return $clone;
     }
+
     /**
      * Return an instance that removes the specified derived request attribute.
      *
@@ -566,9 +661,11 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $clone->attributes->remove($name);
         return $clone;
     }
-    /*******************************************************************************
+
+    /*     * *****************************************************************************
      * Body
-     ******************************************************************************/
+     * **************************************************************************** */
+
     /**
      * Retrieve any parameters provided in the request body.
      *
@@ -594,7 +691,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
             return null;
         }
         $mediaType = $this->getMediaType();
-        $body = (string)$this->getBody();
+        $body = (string) $this->getBody();
         if (isset($this->bodyParsers[$mediaType]) === true) {
             $parsed = $this->bodyParsers[$mediaType]($body);
             if (!is_null($parsed) && !is_object($parsed) && !is_array($parsed)) {
@@ -604,6 +701,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         }
         return $this->bodyParsed;
     }
+
     /**
      * Return an instance with the specified body parameters.
      *
@@ -641,6 +739,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $clone->bodyParsed = $data;
         return $clone;
     }
+
     /**
      * Get request content type.
      *
@@ -654,6 +753,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         $result = $this->getHeader('Content-Type');
         return $result ? $result[0] : null;
     }
+
     /**
      * Get request media type, if known.
      *
@@ -671,6 +771,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         }
         return null;
     }
+
     /**
      * Register media type parser.
      *
@@ -687,6 +788,7 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         if ($callable instanceof Closure) {
             $callable = $callable->bindTo($this);
         }
-        $this->bodyParsers[(string)$mediaType] = $callable;
+        $this->bodyParsers[(string) $mediaType] = $callable;
     }
+
 }

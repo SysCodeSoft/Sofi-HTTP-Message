@@ -2,9 +2,8 @@
 
 namespace Sofi\HTTP\Message;
 
-class ServerRequest extends Request implements Psr\Http\Message\ServerRequestInterface
+class ServerRequest extends Request implements \Psr\Http\Message\ServerRequestInterface
 {
-    
     public function getAttribute($name, $default = null)
     {
         
@@ -135,7 +134,7 @@ class ServerRequest extends Request implements Psr\Http\Message\ServerRequestInt
         
     }
 
-    public function withUploadedFiles($uploadedFiles)
+    public function withUploadedFiles(array $uploadedFiles)
     {
         
     }

@@ -15,8 +15,9 @@ namespace Sofi\HTTP;
  * you request a header value, you receive an array of values
  * for that header.
  */
-class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterface
+class Headers extends \Sofi\Base\Collection implements \Sofi\HTTP\interfaces\HeadersInterface
 {
+
     /**
      * Special HTTP headers that do not have the "HTTP_" prefix
      *
@@ -30,6 +31,7 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
         'PHP_AUTH_DIGEST' => 1,
         'AUTH_TYPE' => 1,
     ];
+
     /**
      * Create new headers collection with data extracted from
      * the application Environment object
@@ -46,12 +48,36 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
             $key = strtoupper($key);
             if (isset(static::$special[$key]) || strpos($key, 'HTTP_') === 0) {
                 if ($key !== 'HTTP_CONTENT_LENGTH') {
-                    $data[$key] =  $value;
+                    $data[$key] = $value;
                 }
             }
         }
         return new static($data);
     }
+    
+    /**
+     * Create new headers collection with data extracted from
+     * the application Environment object
+     *
+     * @param array $globals Global server variables.
+     *
+     * @return self
+     */
+    public static function createFromArray(array $globals)
+    {
+        $env = new \Sofi\Base\Collection($globals);
+        $data = [];
+        foreach ($env as $key => $value) {
+            $key = strtoupper($key);
+//            if (isset(static::$special[$key]) || strpos($key, 'HTTP_') === 0) {
+                if ($key !== 'CONTENT_LENGTH') {
+                    $data[$key] = $value;
+                }
+//            }
+        }
+        return new static($data);
+    }
+
     /**
      * Return array of HTTP header names and values.
      * This method returns the _original_ header name
@@ -68,6 +94,7 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
         }
         return $out;
     }
+
     /**
      * Set HTTP header value
      *
@@ -87,6 +114,7 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
             'originalKey' => $key
         ]);
     }
+
     /**
      * Get HTTP header value
      *
@@ -102,6 +130,7 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
         }
         return $default;
     }
+
     /**
      * Get HTTP header key as originally specified
      *
@@ -117,6 +146,7 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
         }
         return $default;
     }
+
     /**
      * Add HTTP header value
      *
@@ -133,6 +163,7 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
         $newValues = is_array($value) ? $value : [$value];
         $this->set($key, array_merge($oldValues, array_values($newValues)));
     }
+
     /**
      * Does this collection have a given header?
      *
@@ -144,6 +175,7 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
     {
         return parent::has($this->normalizeKey($key));
     }
+
     /**
      * Remove header from collection
      *
@@ -153,6 +185,7 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
     {
         parent::remove($this->normalizeKey($key));
     }
+
     /**
      * Normalize header name
      *
@@ -172,4 +205,5 @@ class Headers extends \Sofi\Base\Collection implements interfaces\HeadersInterfa
         }
         return $key;
     }
+
 }

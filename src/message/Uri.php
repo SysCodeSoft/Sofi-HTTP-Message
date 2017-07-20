@@ -1,9 +1,8 @@
 <?php
 
-namespace Sofi\HTTP\Message;
+namespace Sofi\HTTP\message;
 
-class Uri implements \Psr\Http\Message\UriInterface
-{
+class Uri implements \Psr\Http\Message\UriInterface {
 
     private static $schemes = [
         'http' => 80,
@@ -23,7 +22,7 @@ class Uri implements \Psr\Http\Message\UriInterface
     private $port;
 
     /** @var string Uri path. */
-    private $path = [''];
+    private $path = [];
 
     /** @var string Uri query string. */
     private $query = [];
@@ -31,39 +30,64 @@ class Uri implements \Psr\Http\Message\UriInterface
     /** @var string Uri fragment. */
     private $fragment = [];
 
-    function __construct($uri)
-    {
+    function __construct($uri) {
         $uri = rawurldecode($uri);
-        $parts = parse_url($uri);
+        $parts = [];
+        
+        if (mb_strpos($uri, 'https://') !== false) {
+            $parts['scheme'] = 'https';
+            $uri = mb_substr($uri, 8);
+        } else {
+            $parts['scheme'] = 'http';
+            $uri = mb_substr($uri, 7);
+        }
+
+        $temp = explode('?', $uri);
+        $uri = $temp[0];
+
+        $t = mb_strpos($uri, '/');
+        if ($t !== false) {
+            $parts['host'] = mb_substr($uri, 0, $t);
+            $parts['path'] = mb_substr($uri, $t);
+        } else {
+            $parts['path'] = '/';
+        }
+
+        if (!empty($temp[1])) {
+            $parts['query'] = $temp[1];
+        } else {
+            $parts['query'] = '';
+        }
 
         $this->scheme = isset($parts['scheme']) ? strtolower($parts['scheme']) : '';
         $this->userInfo = isset($parts['user']) ? $parts['user'] : '';
         $this->host = isset($parts['host']) ? $parts['host'] : '';
         $this->port = !empty($parts['port']) ? (int) $parts['port'] : null;
-
         if (isset($parts['path'])) {
-            $this->path = explode('/', mb_strtolower($parts['path']));
-        }        
-        if (isset($parts['query'])) {
-            $this->query = explode('?', $parts['query']);
-        }
-        if (isset($parts['fragment'])) {
-            $this->fragment = explode('#', $parts['fragment']);
+            $this->path = $parts['path'];
+        } else {
+            $this->path = '/';
         }
         
+        if (isset($parts['query'])) {
+            $this->query = $parts['query'];
+        }
+        if (isset($parts['fragment'])) {
+            $this->fragment = $parts['fragment'];
+        }
+
         if (isset($parts['pass'])) {
             $this->userInfo .= ':' . $parts['pass'];
         }
     }
 
-    static function createFromGlobals()
-    {
+    static function createFromGlobals() {
         $uri = (isset($_SERVER['HTTPS']) && 'on' === $_SERVER['HTTPS']) ? 'https://' : 'http://';
 
-        $uri .= $_SERVER['SERVER_NAME'];
+        $uri .= $_SERVER['HTTP_HOST'];
         $uri .= $_SERVER['SERVER_PORT'] != '80' ? ':' . $_SERVER['SERVER_PORT'] : '';
-        $uri .= $_SERVER['PATH_INFO'];
-        $uri .=!empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
+        $uri .= !empty($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+        $uri .= !empty($_SERVER['QUERY_STRING']) ? '?' . $_SERVER['QUERY_STRING'] : '';
 
         return new self($uri);
     }
@@ -78,8 +102,7 @@ class Uri implements \Psr\Http\Message\UriInterface
      * @param string $fragment
      * @return string
      */
-    static function createUriString($scheme, $authority, $path, $query, $fragment)
-    {
+    static function createUriString($scheme, $authority, $path, $query, $fragment) {
         $uri = '';
         if (!empty($scheme)) {
             $uri .= $scheme . ':';
@@ -108,24 +131,17 @@ class Uri implements \Psr\Http\Message\UriInterface
         return $uri;
     }
 
-    public function __toString()
-    {
+    public function __toString() {
         return self::createUriString(
-                $this->scheme, 
-                $this->getAuthority(), 
-                $this->getPath(), 
-                $this->getQuery(), 
-                $this->getFragment()
+                        $this->scheme, $this->getAuthority(), $this->getPath(), $this->getQuery(), $this->getFragment()
         );
     }
 
-    public function getScheme()
-    {
+    public function getScheme() {
         return $this->scheme;
     }
 
-    public function getAuthority()
-    {
+    public function getAuthority() {
         if (empty($this->host)) {
             return '';
         }
@@ -140,68 +156,55 @@ class Uri implements \Psr\Http\Message\UriInterface
         return $authority;
     }
 
-    public function getUserInfo()
-    {
+    public function getUserInfo() {
         return $this->userInfo;
     }
 
-    public function getHost()
-    {
+    public function getHost() {
         return $this->host;
     }
 
-    public function getPort()
-    {
+    public function getPort() {
         return $this->port;
     }
 
-    public function getPath()
-    {
-        return $this->path == [] ? '' : implode('/', $this->path);
+    public function getPath() {
+        return $this->path;
     }
 
-    public function getQuery()
-    {
-        return $this->query == [] ? '' : implode('&', $this->query);
+    public function getQuery() {
+        return $this->query;
     }
 
-    public function getFragment()
-    {
-        return $this->fragment == [] ? '' : implode('#', $this->fragment);
+    public function getFragment() {
+        return $this->fragment;
     }
 
-    public function withFragment($fragment)
-    {
+    public function withFragment($fragment) {
         
     }
 
-    public function withHost($host)
-    {
+    public function withHost($host) {
         
     }
 
-    public function withPath($path)
-    {
+    public function withPath($path) {
         
     }
 
-    public function withPort($port)
-    {
+    public function withPort($port) {
         
     }
 
-    public function withQuery($query)
-    {
+    public function withQuery($query) {
         
     }
 
-    public function withScheme($scheme)
-    {
+    public function withScheme($scheme) {
         
     }
 
-    public function withUserInfo($user, $password = null)
-    {
+    public function withUserInfo($user, $password = null) {
         
     }
 

@@ -140,6 +140,7 @@ class Cookies implements interfaces\CookiesInterface
             $header = isset($header[0]) ? $header[0] : '';
         }
         if (is_string($header) === false) {
+            return []; //TODO
             throw new InvalidArgumentException('Cannot parse Cookie data. Header value must be a string.');
         }
         $header = rtrim($header, "\r\n");

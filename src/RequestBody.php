@@ -5,7 +5,7 @@ namespace Sofi\HTTP;
 /**
  * Provides a PSR-7 implementation of a reusable raw request body
  */
-class RequestBody extends Stream
+class RequestBody extends Body
 {
     /**
      * Create a new RequestBody.
