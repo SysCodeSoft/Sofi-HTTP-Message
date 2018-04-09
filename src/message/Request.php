@@ -142,50 +142,6 @@ class Request extends Message implements \Psr\Http\Message\ServerRequestInterfac
         });
     }
     
-    public static function createFromGlobals(array $globals = [])
-    {
-        if ($globals == []) {
-            $globals = $_SERVER;
-        }
-        
-        $env = new \Sofi\Base\Collection($globals);
-        $method = $env->get('REQUEST_METHOD');
-        $uri = \Sofi\HTTP\message\Uri::createFromGlobals($globals);
-        $headers = \Sofi\HTTP\Headers::createFromGlobals($globals);
-        $cookies = \Sofi\HTTP\Cookies::parseHeader($headers->get('Cookie', []));
-        $serverParams = $globals;
-        $body = new \Sofi\HTTP\RequestBody();
-        $uploadedFiles = \Sofi\HTTP\UploadedFile::createFromGlobals($globals);
-        $request = new static($method, $uri, $headers, $cookies, $serverParams, $body, $uploadedFiles);
-        if ($method === 'POST' &&
-                in_array($request->getMediaType(), ['application/x-www-form-urlencoded', 'multipart/form-data'])
-        ) {
-            // parsed body must be $_POST
-            $request = $request->withParsedBody($_POST);
-        }
-        return $request;
-    }
-
-    public static function createFromApache(array $globals, $uri = '')
-    {
-        $env = new \Sofi\Base\Collection($globals);
-        $method = $env->get('REQUEST_METHOD');
-        $uri = new \Sofi\HTTP\message\Uri($_SERVER['HTTP_HOST'].'/'.$_GET['request_string']);
-        $headers = \Sofi\HTTP\Headers::createFromGlobals($globals);
-        $cookies = \Sofi\HTTP\Cookies::parseHeader($headers->get('Cookie', []));
-        $serverParams = $globals;
-        $body = new \Sofi\HTTP\RequestBody();
-        $uploadedFiles = \Sofi\HTTP\UploadedFile::createFromGlobals($globals);
-        $request = new static($method, $uri, $headers, $cookies, $serverParams, $body, $uploadedFiles);
-        if ($method === 'POST' &&
-                in_array($request->getMediaType(), ['application/x-www-form-urlencoded', 'multipart/form-data'])
-        ) {
-            // parsed body must be $_POST
-            $request = $request->withParsedBody($_POST);
-        }
-        return $request;
-    }
-
     /**
      * Create new headers collection with data extracted from string
      *
